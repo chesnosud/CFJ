@@ -1,14 +1,14 @@
-"""
-Перша версія автоматизації збору лінків декларацій суддів.
-- ЧФС, 04.06.2019
-"""
+# Лінки з майнових декларацій
 
 import requests
 import pandas as pd
-from list_of_judges import judges # файл з переліком суддів
 
-for judge in judges:
-    r = requests.get(f"https://declarations.com.ua/search?q={judge}&format=opendata", timeout=30).json()
+
+def get_links(person):
+    """ Лінки з сайтів nazk, declarations 
+    person: ПІБ
+    """
+    r = requests.get(f"https://declarations.com.ua/search?q={person}&format=opendata", timeout=30).json()
     count = int(r['results']['paginator']['count'])
 
     container = []
@@ -26,10 +26,7 @@ for judge in judges:
         resulting_string = f'{position}|{declaration_year}|{document_type}|{is_corrected}|{created_date}|{raw_source}'
         container.append(resulting_string)
 
-    new_list = []
-    for i in reversed(container):
-        i = tuple(i.split('|'))
-        new_list.append(i)
+    new_list = [tuple(i.split('|')) for i in reversed(container)]
 
     df = pd.DataFrame.from_records(new_list, columns=['position', 'declaration_year','document_type','is_corrected', 'created_date', 'url'])
     new_df = df.copy()
@@ -48,6 +45,12 @@ for judge in judges:
     final_result = final_result.sort_values('declaration_year').drop_duplicates('declaration_year',keep='last')
     final_result.drop(['created_date', 'date', 'document_type', 'is_corrected', 'position'], axis=1, inplace=True)
     final_result['url'] = final_result['url'].str.replace('https://public-api.nazk.gov.ua/v1/declaration/', 'https://public.nazk.gov.ua/declaration/')
-    final_result['output'] = final_result[['declaration_year', 'url']].apply(lambda x: '| '.join(x), axis=1)
+    final_result['PIK| LINK'] = final_result[['declaration_year', 'url']].apply(lambda x: '| '.join(x), axis=1)
     final_result.drop(['declaration_year', 'url'],axis=1,inplace=True)
-    final_result.to_csv(f"results/{judge}_declaration.csv", index=False)
+    final_result.to_csv(f"results/{person}.csv", index=False)
+    final_result.to_csv()
+
+if __name__ == "__main__":    
+    with open('names.txt', encoding='utf-8') as file:
+            for person in file.read().splitlines():
+                get_links(person=person)
