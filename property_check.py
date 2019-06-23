@@ -19,12 +19,11 @@ def clean_property(df):
     """
 
     def function_vyd(i):
-        """Змінюю str у колонці "Вид об'єкта" залежно від умов."""
+        """Змінюю str у колонці "Вид об'єкта" залежно від типу."""
 
         v = i[0].split(':')[-1]
         if ',' in v:
-            vyd_modified = v.split(',')[0]
-            return vyd_modified
+            return v.split(',')[0]
         else:
             return v
         
