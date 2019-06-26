@@ -2,41 +2,7 @@ import requests, re
 import pandas as pd
 import lxml.html as LH
 from bs4 import BeautifulSoup
-
-def get_data():
-    """
-    Отримую перелік найбільш актуальних актів зі сторінки врп 
-    """
-    
-    url = 'http://www.vru.gov.ua/act_list'
-    response = requests.get(url)
-    soup = BeautifulSoup(response.text, 'html.parser')
-    table = soup.find('table')
-
-    records = []
-    columns = []
-    for tr in table.findAll("tr"):
-        ths = tr.findAll("th")
-        if ths != []:
-            for each in ths:
-                columns.append(each.text)
-        else:
-            trs = tr.findAll("td")
-            record = []
-            for each in trs:
-                try:
-                    link = each.find('a')['href']
-                    text = each.text
-                    record.append(link)
-                    record.append(text)
-                except:
-                    text = each.text
-                    record.append(text)
-            records.append(record)
-
-    columns.insert(1, 'Link')
-    df = pd.DataFrame(data=records, columns = columns)
-    return df
+from scrape import requests_beautifulsoup
 
 def filter_data(dataframe):
     """
@@ -70,18 +36,19 @@ def add_info(df):
         reason.append(re.search(r'(\w+\s+\w+\s+\w+$)', i).group(1))
         
     df['Суд'] = container
-    df['Підстава для звільнення'] = reason
 
-    # n = []
-    # for i in list(df['Підстава для звільнення']):
-    #     if 'у відставку' in i:
-    #         n.append(' '.join(i.split(' ')[1:]))
-    # df['Підстава для звільнення'] = n
+    n = []
+    for i in reason:
+        if 'у відставку' in i:
+            n.append(' '.join(i.split(' ')[1:]))
+        else:
+            n.append(i)
+    df['Підстава для звільнення'] = n
     
     return df[['id', 'Піб', 'Суд', 'Дата прийняття', 'Link', 'Підстава для звільнення']]
 
 if __name__ == "__main__":
-    df = get_data()
+    df = requests_beautifulsoup()
     df = filter_data(df)
     df = add_info(df)
     df.to_excel(f"zvilnenii.xlsx", sheet_name=f'test_26.06.2019')
