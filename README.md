@@ -4,7 +4,10 @@
 `declarations.py` [містить](https://github.com/hp0404/CFJ/blob/master/declarations.py) скрипт, котрий дозволяє отримати лінки на щорічні майнові декларації (з реєстрів declarations та nazk). 
 Отримані результати зберігаються в окремий файл в [папці](https://github.com/hp0404/CFJ/tree/master/results) 
 
-## Крок 2. Призначення
+## Крок 2. Кваліфоцінювання
+`kvalif.py` [містить](https://github.com/hp0404/CFJ/blob/master/kvalif.py) парсер для моніторингу новин з результатами кваліфу, оформлених в html таблички. 
+
+Отримані відповіді узгоджує із `календарем оцінювання` та записує в ексель файл. 
 
 ## Крок 3. Акти 
 `scrape.py` [містить](https://github.com/hp0404/CFJ/blob/master/scrape.py) парсер для моніторингу опублікованих актів. 
