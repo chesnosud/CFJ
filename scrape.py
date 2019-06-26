@@ -13,7 +13,7 @@ from bs4 import BeautifulSoup
 def requests_beautifulsoup():
     
     url = 'http://www.vru.gov.ua/act_list'
-    response = requests.get()
+    response = requests.get(url)
     soup = BeautifulSoup(response.text, 'html.parser')
     table = soup.find('table')
 
