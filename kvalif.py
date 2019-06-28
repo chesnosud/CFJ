@@ -4,9 +4,7 @@ import pandas as pd
 import lxml.html as LH
 from bs4 import BeautifulSoup
 
-
-
-def kvalif(url: str, file_name: str) -> pandas.core.frame.DataFrame:
+def kvalif(url: str, file_name: str):
     """Парсер результатів кваліфоцінювання."""
     
     # Отримую дату проведення кваліфу за допомогою regex
@@ -16,17 +14,13 @@ def kvalif(url: str, file_name: str) -> pandas.core.frame.DataFrame:
     date_string = lh_container.xpath('/html/body/div[1]/div/div[2]/div/div/div/div[1]/div/p[1]/text()')
     text = ''.join([ i for i in date_string ])
     pattern = r'([0-9]{2}.+[0-9]{4})'
-    match = re.search(pattern, text)
-    date = match.group(1)
+    date = re.search(pattern, text).group(1)
     
     # Отримую таблицю з результатами та створюю нові колонки
-    df = pd.read_html(url, decimal=',', skiprows=1)[0]
-    columns = ['ПІБ', 'Суд', 'К-сть балів', 'Результат']
-    df.columns = columns
+    df = pd.read_html(url, skiprows=1)[0]
+    df.columns = ['ПІБ', 'Суд', 'К-сть балів', 'Результат']
     df['Дата кваліфоцінювання'] = date
-    results = [ i.split('.')[0] for i in list(df['Результат']) ]
-    df['Результат'] = results
-    df.drop(['К-сть балів'], axis=1, inplace=True)
+    df['Результат'] = [ i.split('.')[0] for i in list(df['Результат']) ]
     df['Чи є профайл'] = "123"
     df['Порушення доброчесності'] = "123"
     df['Дата відправки до ВККС'] = "123"
