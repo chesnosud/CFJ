@@ -1,13 +1,13 @@
-import requests, re
+import sys, re
+import requests
 import pandas as pd
 import lxml.html as LH
 from bs4 import BeautifulSoup
 
-def kvalif(url, file_name):
-    """Парсер результатів кваліфоцінювання.
-          url: лінк на сторінку з результатами 
-    file_name: назва файлу ексель, який буде створений
-    """
+
+
+def kvalif(url: str, file_name: str) -> pandas.core.frame.DataFrame:
+    """Парсер результатів кваліфоцінювання."""
     
     # Отримую дату проведення кваліфу за допомогою regex
     r = requests.get(url)
@@ -31,9 +31,10 @@ def kvalif(url, file_name):
     df['Порушення доброчесності'] = "123"
     df['Дата відправки до ВККС'] = "123"
     df = df[['Дата кваліфоцінювання', 'ПІБ', 'Суд', 'Чи є профайл', 'Порушення доброчесності', 'Дата відправки до ВККС', 'Результат']]
-    
     df.to_excel(f"{file_name}.xlsx", sheet_name=f'{date}')
 
 if __name__ == "__main__":
-    url = 'https://vkksu.gov.ua/ua/news/xx-xxxxxx-xxxxxxx-xxxxxx-xxxxxx-xxxxxxxxxxxx-xxxxxxxx-xxxxxxxx'
-    kvalif(url=url, file_name='kvalif')
+    args = sys.argv[1:]
+    url = args[0]
+    file_name = args[1]
+    kvalif(url=url, file_name=file_name)
