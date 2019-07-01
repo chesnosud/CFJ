@@ -1,4 +1,5 @@
-import requests, re
+import datetime, re
+import requests
 import pandas as pd
 import lxml.html as LH
 from bs4 import BeautifulSoup
@@ -42,4 +43,5 @@ if __name__ == "__main__":
     df = requests_beautifulsoup()
     df = filter_data(df)
     df = add_info(df)
-    df.to_excel(f"results/zvilnenii.xlsx", sheet_name=f'test_26.06.2019')
+    date = datetime.datetime.now().date()
+    df.to_excel(f"fired/звільн_онов_{str(date)}.xlsx", sheet_name=f'оновл. {str(date)}')
