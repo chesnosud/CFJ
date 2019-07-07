@@ -12,18 +12,14 @@ def parse_kvalif(url: str, file_name: str):
     soup = BeautifulSoup(r.text, 'html.parser')
     lh_container = LH.fromstring(soup.prettify())
     date_string = lh_container.xpath('/html/body/div[1]/div/div[2]/div/div/div/div[1]/div/p[1]/text()')
-    text = ' '.join(date_string)
-    pattern = r'([0-9]{1,2}\s+\w+\s+[0-9]{4})'
-    date = re.search(pattern, text).group(1)
+    date = re.search(r'([0-9]{1,2}\s+\w+\s+[0-9]{4})', ' '.join(date_string)).group(1)
     
     # Отримую таблицю з результатами та створюю нові колонки
     df = pd.read_html(soup.prettify(), skiprows=1)[0]
     df.columns = ['ПІБ', 'Суд', 'К-сть балів', 'Результат']
     df['Дата кваліфоцінювання'] = date
     df['Результат'] = [ i.split('.')[0] for i in df['Результат'] ]
-    df['Чи є профайл'] = " "
-    df['Порушення доброчесності'] = " "
-    df['Дата відправки до ВККС'] = " "
+    df['Чи є профайл'], df['Порушення доброчесності'], df['Дата відправки до ВККС']  = " ", " ", " "
     df = df[['Дата кваліфоцінювання', 'ПІБ', 'Суд', 'Чи є профайл', 'Порушення доброчесності', 'Дата відправки до ВККС', 'Результат']]
     df.to_excel(f"{file_name}.xlsx", sheet_name=f'{date}', index=False)
 
