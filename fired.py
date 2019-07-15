@@ -24,23 +24,25 @@ def filter_data(dataframe):
 def add_info(df):
     """З тексту отримую назву суду та підставу для звільнення."""
 
+    df['Filter'] = df['Назва документу'].str.contains('суду', regex=True)
+    df = df.loc[df['Filter'].eq(True)]
+    
     container = []
     for i in df['Назва документу']:
         try:
             m = re.search(r'(\w+[^\s]\w+\s\w+\s\суду\s\w+\s\w+)', i).group(1)
         except:
             m = re.search(r'(\w+[^\s]\w+\s+\w+\s+\w+[^s+]суду)', i).group(1)
-
         container.append(m)  
 
     df['Суд'] = container
-
+    
     reason = [ re.search(r'(\w+\s+\w+\s+\w+$)', i).group(1) for i in df['Назва документу'] ] 
     df['Підстава для звільнення'] = [' '.join(i.split(' ')[1:]) if 'у відставку' in i else i for i in reason]
     return df[['id', 'Піб', 'Суд', 'Дата прийняття', 'Link', 'Підстава для звільнення']]
 
 if __name__ == "__main__":
-    df = requests_beautifulsoup()
+    df = requests_beautifulsoup(url='http://www.vru.gov.ua/act_list')
     df = filter_data(df)
     df = add_info(df)
     date = datetime.datetime.now().date()
