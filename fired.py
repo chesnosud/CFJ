@@ -3,7 +3,36 @@ import requests
 import pandas as pd
 import lxml.html as LH
 from bs4 import BeautifulSoup
-from scrape import requests_beautifulsoup
+
+def parse_vrp(url):
+    """Отримую дані з сторінки актів врп"""
+    response = requests.get(url)
+    soup = BeautifulSoup(response.text, 'html.parser')
+    table = soup.find('table')
+
+    records = []
+    columns = []
+    for tr in table.findAll("tr"):
+        ths = tr.findAll("th")
+        if ths != []:
+            for each in ths:
+                columns.append(each.text)
+        else:
+            trs = tr.findAll("td")
+            record = []
+            for each in trs:
+                try:
+                    link = each.find('a')['href']
+                    text = each.text
+                    record.append(link)
+                    record.append(text)
+                except:
+                    text = each.text
+                    record.append(text)
+            records.append(record)
+
+    columns.insert(1, 'Link')
+    return pd.DataFrame(data=records, columns = columns)
 
 def filter_data(dataframe):
     """
@@ -42,7 +71,7 @@ def add_info(df):
     return df[['id', 'Піб', 'Суд', 'Дата прийняття', 'Link', 'Підстава для звільнення']]
 
 if __name__ == "__main__":
-    df = requests_beautifulsoup(url='http://www.vru.gov.ua/act_list')
+    df = parse_vrp(url='http://www.vru.gov.ua/act_list')
     df = filter_data(df)
     df = add_info(df)
     date = datetime.datetime.now().date()
