@@ -1,7 +1,6 @@
 import datetime, re
 import requests
 import pandas as pd
-import lxml.html as LH
 from bs4 import BeautifulSoup
 
 def parse_vrp(url):
@@ -44,7 +43,8 @@ def filter_data(dataframe):
     df = dataframe.copy()
     df = df.loc[df['Назва документу'].str.contains('звільн', case=False)]
     df = df.loc[~df['Назва документу'].str.contains('залишення без розгляду', case=False)]
-    df['Піб'] = [ re.search(r'(\w+\s\w\.\w\.)', n).group(1) for n in list(df['Назва документу']) ]
+    df = df.loc[df['Назва документу'].str.contains('суду', regex=True)]
+    df['Піб'] = [ re.search(r'(\w+\s\w\.\w\.)', n).group(1) for n in df['Назва документу'] ]
     df['id'] = 'xxxxx'
     df['Суд'] = 'xxxxx'
     df = df[['id', 'Піб', 'Суд', 'Дата прийняття', 'Link', 'Назва документу']]
@@ -53,9 +53,6 @@ def filter_data(dataframe):
 def add_info(df):
     """З тексту отримую назву суду та підставу для звільнення."""
 
-    df['Filter'] = df['Назва документу'].str.contains('суду', regex=True)
-    df = df.loc[df['Filter'].eq(True)]
-    
     container = []
     for i in df['Назва документу']:
         try:
@@ -74,5 +71,4 @@ if __name__ == "__main__":
     df = parse_vrp(url='http://www.vru.gov.ua/act_list')
     df = filter_data(df)
     df = add_info(df)
-    date = datetime.datetime.now().date()
-    df.to_excel(f"fired/звільн_онов_{str(date)}.xlsx", sheet_name=f'оновл. {str(date)}')
+    df.to_excel(f"fired/звільн_онов_{str(datetime.datetime.now().date())}.xlsx")
