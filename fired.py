@@ -48,7 +48,7 @@ def filter_data(dataframe):
     df = dataframe.copy()
     df = df.loc[df['Назва документу'].str.contains('звільн', case=False)]
     df = df.loc[~df['Назва документу'].str.contains('залишення без розгляду', case=False)]
-    df = df.loc[df['Назва документу'].str.contains('суду', regex=True)]
+    df = df.loc[df['Назва документу'].str.contains('суду', case=False)]
     df['Піб'] = df['Назва документу'].str.extract(r'(\w+\s\w\.\w\.)')
     df['id'] = 'xxxxx'
     df['Суд'] = 'xxxxx'
