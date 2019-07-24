@@ -1,10 +1,15 @@
-import datetime, re
-import requests
+"""
+Виправити "Суд", зокрема щодо апеляційних/господарських
+"""
+
+import re, sys
+import requests, datetime
 import pandas as pd
 from bs4 import BeautifulSoup
 
 def parse_vrp(url):
     """Отримую дані з сторінки актів врп"""
+
     response = requests.get(url)
     soup = BeautifulSoup(response.text, 'html.parser')
     table = soup.find('table')
@@ -44,7 +49,7 @@ def filter_data(dataframe):
     df = df.loc[df['Назва документу'].str.contains('звільн', case=False)]
     df = df.loc[~df['Назва документу'].str.contains('залишення без розгляду', case=False)]
     df = df.loc[df['Назва документу'].str.contains('суду', regex=True)]
-    df['Піб'] = [ re.search(r'(\w+\s\w\.\w\.)', n).group(1) for n in df['Назва документу'] ]
+    df['Піб'] = df['Назва документу'].str.extract(r'(\w+\s\w\.\w\.)')
     df['id'] = 'xxxxx'
     df['Суд'] = 'xxxxx'
     df = df[['id', 'Піб', 'Суд', 'Дата прийняття', 'Link', 'Назва документу']]
@@ -65,10 +70,22 @@ def add_info(df):
     
     reason = [ re.search(r'(\w+\s+\w+\s+\w+$)', i).group(1) for i in df['Назва документу'] ] 
     df['Підстава для звільнення'] = [' '.join(i.split(' ')[1:]) if 'у відставку' in i else i for i in reason]
-    return df[['id', 'Піб', 'Суд', 'Дата прийняття', 'Link', 'Підстава для звільнення']]
+    df['paste'] = df['Дата прийняття'].str.cat(df['Link'], sep='| ')
+    return df[['id', 'Піб', 'Суд', 'Дата прийняття', 'Link', 'Підстава для звільнення', 'paste']]
 
 if __name__ == "__main__":
-    df = parse_vrp(url='http://www.vru.gov.ua/act_list')
-    df = filter_data(df)
-    df = add_info(df)
-    df.to_excel(f"fired/звільн_онов_{str(datetime.datetime.now().date())}.xlsx")
+    # якщо довго не перевіряти список звільнених
+    page = sys.argv[1]
+    url = 'http://www.vru.gov.ua/act_list' if page == 1 else 'http://www.vru.gov.ua/act_list/page/25?'
+    try:
+        df = parse_vrp(url=url)
+        df = filter_data(df)
+        df = add_info(df)
+        df.to_excel(f"fired/звільн_онов_{str(datetime.datetime.now().date())}.xlsx", index=False)
+    except:
+        print("""1: перша сторінка,
+        2: друга сторінка
+        Наприклад, 
+        "python ./fired.py 2"
+        """)
+    
