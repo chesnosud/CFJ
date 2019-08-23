@@ -78,7 +78,7 @@ if __name__ == "__main__":
     page = sys.argv[1]
     url = 'http://www.vru.gov.ua/act_list' if page == 1 else 'http://www.vru.gov.ua/act_list/page/25?'
     try:
-        df = parse_vrp(url=url)
+        df = parse_vrp(url='http://www.vru.gov.ua/act_list')
         df = filter_data(df)
         df = add_info(df)
         df.to_excel(f"fired/звільн_онов_{str(datetime.datetime.now().date())}.xlsx", index=False)
