@@ -53,4 +53,8 @@ def get_links(person):
 if __name__ == "__main__":    
     with open('names.txt', encoding='utf-8') as file:
             for person in file.read().splitlines():
-                get_links(person=person)
+                try:
+                    get_links(person=person)
+                except:
+                    with open('results/fails.txt', 'a', encoding='utf-8') as fails:
+                        fails.write(f"{person}\n")
