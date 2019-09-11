@@ -1,14 +1,11 @@
-"""
-Виправити "Суд", зокрема щодо апеляційних/господарських
-"""
-
 import re, sys
 import requests, datetime
+import numpy as np
 import pandas as pd
 from bs4 import BeautifulSoup
 
-def parse_vrp(url):
-    """Отримую дані з сторінки актів врп"""
+def parse_vrp(url:str) -> pd.DataFrame:
+    """Отримує дані з сторінки актів врп"""
 
     response = requests.get(url)
     soup = BeautifulSoup(response.text, 'html.parser')
@@ -36,51 +33,35 @@ def parse_vrp(url):
             records.append(record)
 
     columns.insert(1, 'Link')
-    return pd.DataFrame(data=records, columns = columns)
+    return pd.DataFrame(data=records, columns=columns)
 
-def filter_data(dataframe):
+def filter_data(dataframe:pd.DataFrame) -> pd.DataFrame:
     """
-    Відбираю з отриманих результатів ті, що стосуються звільнень; 
-    отримую з тексту ім'я;
-    в результаті додаю нові колонки.
+    Відфільтровує звільнених, отримує імена, назви судів, підстави звільнення
     """
 
     df = dataframe.copy()
-    df = df.loc[df['Назва документу'].str.contains('звільн', case=False)]
-    df = df.loc[~df['Назва документу'].str.contains('залишення без розгляду', case=False)]
-    df = df.loc[df['Назва документу'].str.contains('суду', case=False)]
+    df = df.loc[df['Назва документу'].str.contains('^Про звільнення')]
     df['Піб'] = df['Назва документу'].str.extract(r'(\w+\s\w\.\w\.)')
-    df['id'] = 'xxxxx'
-    df['Суд'] = 'xxxxx'
-    df = df[['id', 'Піб', 'Суд', 'Дата прийняття', 'Link', 'Назва документу']]
-    return df[::-1]
+    df['Суд'] = df['Назва документу'].str.extract(r'(\w+\s+\w+\s+\bсуд[у]?\b\s+\w+\s+\w+)')
 
-def add_info(df):
-    """З тексту отримую назву суду та підставу для звільнення."""
+    df['Підстава для звільнення'] = np.where(df['Назва документу'].str.contains('на підставі'),
+        df['Назва документу'].str.extract(r'(\bна підставі\b.*)', expand=False),
+        df['Назва документу'].str.extract(r'(\w+\s+\w+$)', expand=False))
 
-    container = []
-    for i in df['Назва документу']:
-        try:
-            m = re.search(r'(\w+[^\s]\w+\s\w+\s\суду\s\w+\s\w+)', i).group(1)
-        except:
-            m = re.search(r'(\w+[^\s]\w+\s+\w+\s+\w+[^s+]суду)', i).group(1)
-        container.append(m)  
-
-    df['Суд'] = container
-    
-    reason = [ re.search(r'(\w+\s+\w+\s+\w+$)', i).group(1) for i in df['Назва документу'] ] 
-    df['Підстава для звільнення'] = [' '.join(i.split(' ')[1:]) if 'у відставку' in i else i for i in reason]
     df['paste'] = df['Дата прийняття'].str.cat(df['Link'], sep='| ')
-    return df[['id', 'Піб', 'Суд', 'Дата прийняття', 'Link', 'Підстава для звільнення', 'paste']]
+    df['id'] = 'xxxxx'
+    df = df[['id', 'Піб', 'Суд', 'Дата прийняття', 'Link', 'Підстава для звільнення', 'paste']]
+    return df[::-1]
 
 if __name__ == "__main__":
     # якщо довго не перевіряти список звільнених
     page = sys.argv[1]
     url = 'http://www.vru.gov.ua/act_list' if page == 1 else 'http://www.vru.gov.ua/act_list/page/25?'
+    
     try:
-        df = parse_vrp(url='http://www.vru.gov.ua/act_list')
+        df = parse_vrp(url=url)
         df = filter_data(df)
-        df = add_info(df)
         df.to_excel(f"fired/звільн_онов_{str(datetime.datetime.now().date())}.xlsx", index=False)
     except:
         print("""1: перша сторінка,
