@@ -17,3 +17,6 @@
 ## Крок 4. Реєстр родинних зв'язків
 
 [`родині звязки.ipynb`](https://github.com/hp0404/CFJ/blob/master/%D1%80%D0%BE%D0%B4%D0%B8%D0%BD%D1%96%20%D0%B7%D0%B2%D1%8F%D0%B7%D0%BA%D0%B8.ipynb) отримує таблицю родинних зв'язків
+
+## Відкриті дані court.gov.ua/opendata/
+[`court_fair_opendata.ipynb`](https://nbviewer.jupyter.org/github/hp0404/CFJ/blob/master/court_fair_opendata.ipynb) автоматичне завантаження рішень з реєстру 
