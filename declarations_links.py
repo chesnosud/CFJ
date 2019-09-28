@@ -1,13 +1,12 @@
 import os
 from time import sleep
-from typing import Dict
 
 import requests
 import pandas as pd
 from pandas.io.json import json_normalize
 
 
-def create_dataframe(r: Dict[dict, dict, list, dict]) -> pd.DataFrame:
+def create_dataframe(r: dict) -> pd.DataFrame:
     """
     """
 
@@ -31,7 +30,7 @@ def create_dataframe(r: Dict[dict, dict, list, dict]) -> pd.DataFrame:
     return df
 
 
-def reshape_dataframe(dataframe: pd.DataFrame) -> pd.DataFrame:
+def reshape_dataframe(dataframe: pd.DataFrame, person: str) -> pd.DataFrame:
     """
     """
 
@@ -45,9 +44,11 @@ def reshape_dataframe(dataframe: pd.DataFrame) -> pd.DataFrame:
 
     df = df.loc[(df["name"].eq(person)) & (df["document_type"].ne("Форма змін"))]
 
-    return df[
-        ["name", "office", "document_type", "created_date", "declaration_year", "link"]
-    ]
+    useless_columns = [
+        "first_name", "last_name", "patronymic", "id", "is_corrected", "position", "url"
+        ]
+
+    return df.drop(useless_columns, axis=1)
 
 
 def rm_datedups(dataframe: pd.DataFrame) -> pd.DataFrame:
@@ -88,7 +89,7 @@ def main(person: str) -> None:
     r = requests.get(url, sleep(0.5)).json()
 
     dataframe = create_dataframe(r)
-    reshaped_df = reshape_dataframe(dataframe)
+    reshaped_df = reshape_dataframe(dataframe, person)
     df = rm_datedups(reshaped_df)
 
     if df.empty:
