@@ -1,10 +1,14 @@
-import re, sys, datetime
+import os 
+import sys 
+import datetime
 
 import numpy as np
 import pandas as pd
 
 import requests
 from bs4 import BeautifulSoup
+
+from concat_files import concat_files
 
 
 def parse_vrp(url: str) -> pd.DataFrame:
@@ -16,13 +20,13 @@ def parse_vrp(url: str) -> pd.DataFrame:
 
     records = []
     columns = []
-    for tr in table.findAll("tr"):
-        ths = tr.findAll("th")
+    for tr in table.find_all("tr"):
+        ths = tr.find_all("th")
         if ths != []:
             for each in ths:
                 columns.append(each.text)
         else:
-            trs = tr.findAll("td")
+            trs = tr.find_all("td")
             record = []
             for each in trs:
                 try:
@@ -61,39 +65,31 @@ def filter_data(dataframe: pd.DataFrame) -> pd.DataFrame:
     df["id"] = "xxxxx"
     df = df[
         [
-            "id",
-            "Піб",
-            "Суд",
-            "Дата прийняття",
-            "Link",
-            "Підстава для звільнення",
-            "paste",
+            "id", "Піб", "Суд", "Дата прийняття",
+            "Link", "Підстава для звільнення", "paste",
         ]
     ]
     return df[::-1]
 
 
 if __name__ == "__main__":
-    
+
+    os.makedirs("./звільнення/", exist_ok=True)
     page = sys.argv[1]
-    url = (
-        "http://www.vru.gov.ua/act_list"
-        if page == 1
-        else "http://www.vru.gov.ua/act_list/page/25?"
+
+    d = {}
+    for i, j in zip(range(1, 31, 1), range(0, 775, 25)):
+        d[str(i)] = str(j)
+
+    for key, value in d.items():
+        page = page.replace(key, value)
+
+
+    url = f"http://www.vru.gov.ua/act_list/page/{page}?"
+    df = parse_vrp(url)
+    df = filter_data(df)
+    df.to_excel(
+            f"./звільнення/оновлено_{str(datetime.datetime.now().date())}.xlsx", index=False
     )
 
-    try:
-        df = parse_vrp(url=url)
-        df = filter_data(df)
-        df.to_excel(
-            f"fired/звільн_онов_{str(datetime.datetime.now().date())}.xlsx", index=False
-        )
-    except:
-        print(
-        """
-        1: перша сторінка,
-        2: друга сторінка
-        Наприклад, 
-        "python ./fired.py 2"
-        """
-        )
+    concat_files()
