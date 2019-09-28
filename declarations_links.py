@@ -1,66 +1,112 @@
-"""
-Отримує перелік лінків для оновлення статичної інформації. 
-Вже 4 місяці висить неоновлений, найближчим часом виправлю,
-Аби Настя могла перейняти і доповнити
-
-28.09
-"""
+import os
+from time import sleep
+from typing import Dict
 
 import requests
 import pandas as pd
+from pandas.io.json import json_normalize
 
 
-def get_links(person):
-    """ Лінки з сайтів nazk, declarations 
-    person: ПІБ
+def create_dataframe(r: Dict[dict, dict, list, dict]) -> pd.DataFrame:
     """
-    r = requests.get(f"https://declarations.com.ua/search?q={person}&format=opendata", timeout=30).json()
-    count = int(r['results']['paginator']['count'])
+    """
 
-    container = []
-    for i in range(count):
-        position = r['results']['object_list'][i]['infocard']['position']
-        declaration_year = r['results']['object_list'][i]['infocard']['declaration_year']
-        document_type = r['results']['object_list'][i]['infocard']['document_type']
-        created_date = r['results']['object_list'][i]['infocard']['created_date']
-        is_corrected = r['results']['object_list'][i]['infocard']['is_corrected']
+    path = r["results"]["object_list"]
+
+    data_container = []
+    raw_source = []
+    for i in range(len(path)):
+        data_container.append(json_normalize(path[i]["infocard"]))
+
         try:
-            raw_source = r['results']['object_list'][i]['raw_source']['url']
-        except:
-            raw_source = r['results']['object_list'][i]['raw_source']['declaration']['url']
+            rs = path[i]["raw_source"]["url"]
+        except KeyError:
+            rs = path[i]["raw_source"]["declaration"]["url"]
 
-        resulting_string = f'{position}|{declaration_year}|{document_type}|{is_corrected}|{created_date}|{raw_source}'
-        container.append(resulting_string)
+        raw_source.append(rs)
 
-    new_list = [tuple(i.split('|')) for i in reversed(container)]
+    df = pd.concat(data_container, sort=True, ignore_index=True)
+    df["link"] = raw_source
 
-    df = pd.DataFrame.from_records(new_list, columns=['position', 'declaration_year','document_type','is_corrected', 'created_date', 'url'])
-    new_df = df.copy()
-    new_df = new_df.loc[new_df['position'].str.contains('суддя|голова', case=False)]
-    new_df = new_df.loc[~new_df['document_type'].str.contains("форма змін", case=False)]
+    return df
 
-    table1 = new_df.loc[new_df.created_date == 'None']
-    table2 = new_df.loc[new_df.created_date != 'None']
 
-    table2[['date', 'time']] = table2['created_date'].str.split('T', expand=True)
-    table2.drop(['created_date', 'time'], axis=1, inplace=True)
-    table2 = table2.sort_values('date').drop_duplicates('date',keep='last')
-    table2 = table2.sort_values('declaration_year').drop_duplicates('declaration_year',keep='last')
+def reshape_dataframe(dataframe: pd.DataFrame) -> pd.DataFrame:
+    """
+    """
 
-    final_result = table1.append(table2)
-    final_result = final_result.sort_values('declaration_year').drop_duplicates('declaration_year',keep='last')
-    final_result.drop(['created_date', 'date', 'document_type', 'is_corrected', 'position'], axis=1, inplace=True)
-    final_result['url'] = final_result['url'].str.replace('https://public-api.nazk.gov.ua/v1/declaration/', 'https://public.nazk.gov.ua/declaration/')
-    final_result['PIK| LINK'] = final_result[['declaration_year', 'url']].apply(lambda x: '| '.join(x), axis=1)
-    final_result.drop(['declaration_year', 'url'],axis=1,inplace=True)
-    final_result.to_csv(f"results/{person}.csv", index=False)
-    final_result.to_csv()
+    df = dataframe.copy()
 
-if __name__ == "__main__":    
-    with open('names.txt', encoding='utf-8') as file:
-            for person in file.read().splitlines():
-                try:
-                    get_links(person=person)
-                except:
-                    with open('results/fails.txt', 'a', encoding='utf-8') as fails:
-                        fails.write(f"{person}\n")
+    df["name"] = (
+        df["last_name"]
+        .str.cat(df["first_name"], sep=" ")
+        .str.cat(df["patronymic"], sep=" ")
+    )
+
+    df = df.loc[(df["name"].eq(person)) & (df["document_type"].ne("Форма змін"))]
+
+    return df[
+        ["name", "office", "document_type", "created_date", "declaration_year", "link"]
+    ]
+
+
+def rm_datedups(dataframe: pd.DataFrame) -> pd.DataFrame:
+    """
+    """
+
+    df = dataframe.copy()
+
+    df["created_date"] = pd.to_datetime(
+        df["created_date"], format="%Y-%m-%d", errors="coerce"
+    )
+
+    df["declaration_year"] = df["declaration_year"].astype(int)
+    df = df.loc[~(df["declaration_year"].eq(2015) & df["link"].str.contains("/static"))]
+
+    df = df.sort_values("created_date").drop_duplicates("declaration_year", keep="last")
+
+    df["link"] = df["link"].str.replace(
+        pat="https://public-api.nazk.gov.ua/v1/declaration/",
+        repl="https://public.nazk.gov.ua/declaration/",
+    )
+
+    return df.sort_values("declaration_year")
+
+
+def save(df: pd.DataFrame) -> None:
+    """
+    """
+    paste = df["declaration_year"].astype(str).str.cat(df["link"], sep="| ")
+    pd.DataFrame(paste).to_csv(f"./декларації/{person}.csv", index=False)
+
+
+def main(person: str) -> None:
+    """
+    """
+
+    url = f"http://declarations.com.ua/search?q={person}+AND+суддя&deepsearch=on&format=opendata"
+    r = requests.get(url, sleep(0.5)).json()
+
+    dataframe = create_dataframe(r)
+    reshaped_df = reshape_dataframe(dataframe)
+    df = rm_datedups(reshaped_df)
+
+    if df.empty:
+        raise ValueError
+    else:
+        save(df)
+
+
+if __name__ == "__main__":
+
+    os.makedirs("./декларації/", exist_ok=True)
+
+    with open("names.txt", encoding="utf-8") as file:
+        names_list = file.read().splitlines()
+
+    for person in names_list:
+        try:
+            main(person)
+        except ValueError:
+            with open("./декларації/не_отримані.txt", "a") as ve:
+                ve.write(f"{person}\n")
