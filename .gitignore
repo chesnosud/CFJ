@@ -1,4 +1,7 @@
 __pycache__/
 .ipynb_checkpoints/
 .mypy_cache/
+звільнення/
+декларації/
+результати_кваліфоцінювання/
 temp.py

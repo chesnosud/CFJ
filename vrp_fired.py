@@ -92,4 +92,4 @@ if __name__ == "__main__":
             f"./звільнення/оновлено_{str(datetime.datetime.now().date())}.xlsx", index=False
     )
 
-    concat_files()
+    concat_files(folder="звільнення")
