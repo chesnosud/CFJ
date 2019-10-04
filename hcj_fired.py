@@ -1,3 +1,11 @@
+""" 
+Отримує акти, що стосуються звільнень, та зберігає їх в .xlsx файл
+
+Приклад використання: 
+`python hcj_fired.py PAGE`
+де PAGE є номером сторінки, напр. 1
+"""
+
 import os
 import sys
 import datetime
@@ -11,11 +19,18 @@ from vrp_fired import filter_data
 from concat_files import concat_files
 
 
-def parse_page(url: str) -> pd.DataFrame:
-    """ Парсить таблицю з нового сайту """
+def parse_page(page: str) -> pd.DataFrame:
+    """ 
+    Створює таблицю актів  
+    
+    Parameters
+    ----------
+    page : int
+        Номер сторінки, з якої слід отримати таблицю
+    """
 
     # отримання основного вмісту таблиці
-    r = requests.get(url)
+    r = requests.get(f"http://hcj.gov.ua/acts?page={page}")
     soup = BeautifulSoup(r.text, "html.parser")
     df = pd.read_html(soup.prettify())[0]
 
@@ -29,11 +44,9 @@ def parse_page(url: str) -> pd.DataFrame:
 if __name__ == "__main__":
     
     os.makedirs("./звільнення/", exist_ok=True)
-    page = str(int(sys.argv[1]) - 1)
+    page = int(sys.argv[1]) - 1
 
-    url = f"http://hcj.gov.ua/acts?page={page}"
-
-    df = parse_page(url)
+    df = parse_page(page)
     df = filter_data(df)
     df.to_excel(
         f"звільнення/оновлено_{str(datetime.datetime.now().date())}.xlsx", index=False

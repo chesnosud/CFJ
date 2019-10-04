@@ -2,10 +2,14 @@ import os, datetime
 import pandas as pd
 
 
-def concat_files(folder="fired") -> None:
-    """    Об'єднує усі файли з розширенням .xlsx в межах однієї папки
-
-    folder: папка із файлами
+def concat_files(folder: str) -> None:
+    """    
+    Об'єднує усі файли з розширенням .xlsx в межах однієї папки
+    
+    Parameters
+    ----------
+    folder : str
+        Папка із файлами, `folder="звільнення"`
     """
 
     path = os.path.join(os.path.dirname(os.path.abspath(__file__)), folder)
@@ -17,4 +21,4 @@ def concat_files(folder="fired") -> None:
 
 
 if __name__ == "__main__":
-    concat_files()
+    concat_files(folder="результати_кваліфоцінювання")

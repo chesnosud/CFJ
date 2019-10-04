@@ -1,3 +1,10 @@
+""" 
+Отримує результати кваліфоцінювання за посиланням на новину
+
+Приклад використання: 
+`python kvalif_news.py https://vkksu.gov.ua/ua/news/simoch-suddiw-wiznano-.../`
+"""
+
 import os
 import sys
 import re
@@ -6,15 +13,23 @@ import requests
 from lxml.html import fromstring
 from bs4 import BeautifulSoup
 
+import numpy as np
 import pandas as pd
 
 from concat_files import concat_files
 
 
-def parse_kvalif(url: str) -> None:
-    """ Парсить html таблицю з результати оцінювання
+def get_results(url: str) -> None:
+    """ 
+    Опрацьовує результати кваліфоцінювання:
+        (а) отримує html таблицю з результатами;
+        (б) змінює її відповідно до шаблону;
+        (в) зберігає як .xlsx файл 
     
-    url: посилання на новину 
+    Parameters
+    ----------
+    url : str
+        Посилання на новину
     """
 
     # Отримання вмісту сторінки за url посиланням
@@ -32,9 +47,13 @@ def parse_kvalif(url: str) -> None:
     df.columns = ["ПІБ", "Суд", "К-сть балів", "Результат"]
 
     # Редагування таблиці 
-    df["Дата кваліфоцінювання"] = date # додана дата оцінювання
+    df["Дата кваліфоцінювання"] = date 
     df["Результат"] = df["Результат"].str.split(".").str[0] # скорочений результат
-    df["Область"] = df["Суд"].str.split().str[-2:].str.join(" ") # область з назви суду
+    df["Область"] = np.where(
+        df["Суд"].str.contains("адміністративний"), # якщо `адміністративний` суд
+        df["Суд"].str.split().str[0], # то взяти перше слово
+        df["Суд"].str.split().str[-2:].str.join(" ") # якщо ні, то останні два
+    )
     df["Чи є профайл"], df["Порушення доброчесності"], df["Дата відправки до ВККС"] = (
         "xxx", "xxx", "xxx",
     )
@@ -45,7 +64,7 @@ def parse_kvalif(url: str) -> None:
         ]
     ]
     
-    # створення папки, в яку буде збережений результат
+    # створення папки, в яку буде збережений результат, якщо папки не існує
     os.makedirs("./результати_кваліфоцінювання", exist_ok=True)
     # збереження таблиці в xlsx форматі
     df.to_excel(
@@ -55,7 +74,8 @@ def parse_kvalif(url: str) -> None:
 
 if __name__ == "__main__":
 
-    parse_kvalif(url=sys.argv[1])
+    # завантаження результатів
+    get_results(url=sys.argv[1])
     
     # об'єднує усі завантажені в папку файли в один
     concat_files(folder="результати_кваліфоцінювання")
