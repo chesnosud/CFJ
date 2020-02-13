@@ -1,17 +1,9 @@
-""" 
-Отримує результати кваліфоцінювання за посиланням на новину
-
-Приклад використання: 
-`python kvalif_news.py https://vkksu.gov.ua/ua/news/simoch-suddiw-wiznano-.../`
-"""
-
 import os
 import sys
 import re
 
 import requests
 from lxml.html import fromstring
-from bs4 import BeautifulSoup
 
 import numpy as np
 import pandas as pd
@@ -34,16 +26,15 @@ def get_results(url: str) -> None:
 
     # Отримання вмісту сторінки за url посиланням
     r = requests.get(url)
-    soup = BeautifulSoup(r.text, "lxml")
 
     # Отримання дати оцінювання за xpath тексту сторінки
-    date_string = fromstring(soup.prettify()).xpath(
+    date_string = fromstring(r.content).xpath(
         "/html/body/div[1]/div/div[2]/div/div/div/div[1]/div/p[1]/text()"
     )
     date = re.search(r"(\d{1,2}\s+\w+\s+\d{4})", " ".join(date_string)).group(1)
 
     # Зчитування html таблиці з результатами оцінювання
-    df = pd.read_html(soup.prettify(), skiprows=1)[0]
+    df = pd.read_html(r.content, skiprows=1)[0]
     df.columns = ["ПІБ", "Суд", "К-сть балів", "Результат"]
 
     # Редагування таблиці 
@@ -57,19 +48,20 @@ def get_results(url: str) -> None:
     df["Чи є профайл"], df["Порушення доброчесності"], df["Дата відправки до ВККС"] = (
         "xxx", "xxx", "xxx",
     )
-    df = df[
-        [
-            "Дата кваліфоцінювання", "ПІБ", "Область", "Чи є профайл",
-            "Порушення доброчесності", "Дата відправки до ВККС", "Результат",
-        ]
-    ]
+    df = df[[
+        "Дата кваліфоцінювання", "ПІБ", "Область", "Чи є профайл",
+        "Порушення доброчесності", "Дата відправки до ВККС", "Результат",
+    ]]
     
     # створення папки, в яку буде збережений результат, якщо папки не існує
     os.makedirs("./результати_кваліфоцінювання", exist_ok=True)
+    
     # збереження таблиці в xlsx форматі
     df.to_excel(
         f"./результати_кваліфоцінювання/{date}_результат.xlsx", 
-        sheet_name=f"{date}", index=False)
+        sheet_name=f"{date}", 
+        index=False
+    )
 
 
 if __name__ == "__main__":

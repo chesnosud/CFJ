@@ -244,6 +244,7 @@ if __name__ == "__main__":
         names_list = file.read().splitlines()
 
     for person in names_list:
+        person = person.strip().partition(".")[0]
         try:
             url = f"http://declarations.com.ua/search?q={person}+AND+суддя&deepsearch=on&format=opendata"
             r = requests.get(url, sleep(0.5)).json()
