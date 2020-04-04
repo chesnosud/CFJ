@@ -16,7 +16,7 @@ F = [
 ]
 
 
-def get_relatives(name: str) -> pd.DataFrame:
+def get_relatives(name: str) -> dict:
     """ Отримує род. зв. у табличному форматі. """
 
     pib = "-".join(name.split(" ")).lower()
@@ -57,21 +57,22 @@ def table_to_text(relatives: dict) -> iter:
         ):
             pairs.append(pair)
             
+        gender = relatives[name]["Стать"][0]
+        word = "працювала" if gender=="ЖІНКА" else "працював"
+
         size = len(pairs)
-        
+
         positions = [pairs[i][-1] for i in range(size-1)]
         places = [pairs[i][0] for i in range(size-1)]
 
-        period_tuple = [(pairs[i][1], pairs[i][2])for i in range(size-1)]
-        period = ['-'.join(pair) for pair in period_tuple]
+        tenure_tuple = [(pairs[i][1], pairs[i][2])for i in range(size-1)]
+        tenure = ['-'.join(pair) for pair in tenure_tuple]
         
-        history = [f"{pos} ({prd}) в {plc}" for pos, prd, plc in zip(positions, period, places)]
-        
-        gender = relatives[name]["Стать"][0]
-        word = "працювала" if gender=="ЖІНКА" else "працював"
+        past_experience = [f"{pos} ({prd}) в {plc}" for pos, prd, plc in zip(positions, tenure, places)]
+        exp = ', '.join(past_experience)
         
         p1 = f"{name} - з {pairs[-1][1]} по {pairs[-1][2]} працює {pairs[-1][-1]} в {pairs[-1][0]}."
-        p2 = f"До цього, протягом {pairs[0][1]}-{pairs[-1][1]}, {word} на таких посадах: {', '.join(history)} "
+        p2 = f"До цього, протягом {pairs[0][1]}-{pairs[-1][1]}, {word} на таких посадах: {exp}."
         
         if size > 1:
             yield " ".join([p1, p2])
