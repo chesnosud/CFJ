@@ -1,52 +1,52 @@
-import re
+import numpy as np
 import pandas as pd
 import requests
 from bs4 import BeautifulSoup
-from Typing import Dict, List, Iterator
+from time import sleep
 
 
 URL = ""
+M = [
+    "чоловік", "батько", "вітчим", "син", "брат", "дядько",
+    "племінник", "небіж"
+]
+F = [
+    "дружина", "мати", "матір", "мачуха", "донька", "дочка", "сестра",
+    "тітка", "племінниця", "небога"
+]
 
 
-def rz(name: str) -> Dict[Dict[str, List[str]]]:
-    """ Отримує род. зв. у табличному форматі. 
+def get_relatives(name: str) -> pd.DataFrame:
+    """ Отримує род. зв. у табличному форматі. """
 
-    name: ім'я у форматі: "Прізвище Ім'я По-батькові"
-    ---
-
-    >>> rz(name)
-                             ПІБ               Місце роботи                     Посада Період роботи
-    0  Іванов Іван Іванович       Оперативне управління ДПІ  cтарший оперуповноважений  2015—2016 рр.
-    1  Іванов Іван Іванович       Оперативне управління ГУ   cтарший оперуповноважений  2016—2018 рр.
-    2  Іванов НеІван Іванович     Державна Екологічна Інспе  головний спеціаліст відді  2012—2018 рр.
-    3  НеІванов Неіван Неіваночи  Долинське відділення полі  поліцейський сектору реаг  2017—2017 рр.
-    4  НеІванов Неіван Неіваночи  Долинське відділення полі  інспектор з ювенальної пр  2017—2018 рр.
-    """
-
-    pib = re.sub("\s+", "-", name).lower()
+    pib = "-".join(name.split(" ")).lower()
+    
     response = requests.get(URL + pib)
     soup = BeautifulSoup(response.content, "html.parser")
-
+    
     df = pd.read_html(soup.prettify())[0]
     df.columns = ["ПІБ", "Місце роботи", "Початок роботи", "Кінець роботи"]
-    df["Посада"] = [em.text for em in soup.find_all("em")]
+    
+    df["Посада"] = df["Місце роботи"].str.split("  ").str[1]
+    df["Місце роботи"] = df["Місце роботи"].str.split("  ").str[0]
+    df["Стать"] = df["ПІБ"].str.lower()
+    df["Стать"] = np.select(
+        condlist=[
+            df["Стать"].str.contains("|".join(M)),
+            df["Стать"].str.contains("|".join(F))
+        ],
+        choicelist=[
+            "ЧОЛОВІК", "ЖІНКА"
+        ],
+        default="НЕВІДОМО"
+    )
 
     return df.groupby("ПІБ").agg(list).to_dict("index")
 
 
-def table_to_text(relatives: Dict[Dict[str, List[str]]]) -> Iterator[str]:
-    """ Конвертує род. зв. з табличного формату в текстовий за форматом:
-    ПІБ (ступінь спорідненості) -- з _остання дата початку роботу_ по 
-    _остання дата закінчення роботи_ працює _остання посада_ в
-    _останнє місце роботи_. До цього, протягом 
-    _перша дата початку роботи_-_передостання дата останнього кінця роботи_,
-    працював на таких посадах: _перелік у форматі "посада (період)".
-    
-    --------
-    
-    >>> s = list(table_to_text(df))
-    """
-    
+def table_to_text(relatives: dict) -> iter:
+    """ Конвертує род. зв. з табличного формату в текстовий """
+        
     for name in relatives.keys():
         pairs = []
         for pair in zip(
@@ -56,24 +56,42 @@ def table_to_text(relatives: Dict[Dict[str, List[str]]]) -> Iterator[str]:
             relatives[name].get("Посада", "")
         ):
             pairs.append(pair)
-        
+            
         size = len(pairs)
-        previous_positions_list = [pairs[i][-1] for i in range(size-1)]
-        previous_positions_string = ', '.join(previous_positions_list) 
-        previous_places = ', '.join([pairs[i][0] for i in range(size-1)])
+        
+        positions = [pairs[i][-1] for i in range(size-1)]
+        places = [pairs[i][0] for i in range(size-1)]
 
-        year_pairs_tuple = [(pairs[i][1], pairs[i][2])for i in range(size-1)]
-        years = ['-'.join(pair) for pair in year_pairs_tuple]
+        period_tuple = [(pairs[i][1], pairs[i][2])for i in range(size-1)]
+        period = ['-'.join(pair) for pair in period_tuple]
         
+        history = [f"{pos} ({prd}) в {plc}" for pos, prd, plc in zip(positions, period, places)]
         
-        position_year = [f"{p} ({y})" for p,y in zip(previous_positions_list, years)]
-        part1 = f"{name} - з {pairs[-1][1]} по {pairs[-1][2]} працює {pairs[-1][-1]} в {pairs[-1][0]}."
-        part2 = f"До цього, протягом {pairs[0][1]}-{pairs[-1][1]}, працював на таких посадах: {', '.join(position_year)}"
+        gender = relatives[name]["Стать"][0]
+        word = "працювала" if gender=="ЖІНКА" else "працював"
         
-        yield " ".join([part1, part2])
-
+        p1 = f"{name} - з {pairs[-1][1]} по {pairs[-1][2]} працює {pairs[-1][-1]} в {pairs[-1][0]}."
+        p2 = f"До цього, протягом {pairs[0][1]}-{pairs[-1][1]}, {word} на таких посадах: {', '.join(history)} "
+        
+        if size > 1:
+            yield " ".join([p1, p2])
+        else:
+            yield p1
+            
+            
+def main():
+    with open("relatives_input.txt", encoding="utf-8") as input_file:
+        for name in input_file:
+            relatives_dict = get_relatives(name)
+            result = list(table_to_text(relatives_dict))
+            with open("./relatives_output.txt", "a") as output_file:
+                output_file.write(f"\n{name}:\n")
+                for counter, value in enumerate(result, 1):
+                    s = f"{counter}. {value}"
+                    output_file.write(f"{s}\n")
+            
+            sleep(1)
+            
 
 if __name__ == "__main__":
-    name = "Іванов Іван Іванович"
-    df = rz(name)
-    s = list(table_to_text(df))
+    main()
