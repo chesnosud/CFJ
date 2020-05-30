@@ -1,38 +1,39 @@
+import click
 import numpy as np
 import pandas as pd
+import requests
+from fake_useragent import UserAgent
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from bs4 import BeautifulSoup
 from time import sleep
 
 
-URL = ""
+URL = "http://www.blood.in.ua/declaration/"
 M = ["чоловік", "батько", "вітчим", "син", "брат", "дядько", "племінник", "небіж"]
 F = [
-    "дружина",
-    "мати",
-    "матір",
-    "мачуха",
-    "донька",
-    "дочка",
-    "сестра",
-    "тітка",
-    "племінниця",
-    "небога",
-]
+    "дружина", "мати", "матір", "мачуха", "донька", 
+    "дочка", "сестра", "тітка", "племінниця", "небога" 
+    ]
 
 
-def load_page(url: str):
+def load_page(url: str, selenium_method : bool = False):
     """ Повертає вміст сторінки через selenium. """
+    
+    if selenium_method:
+            
+        options = Options()
+        options.headless = True
 
-    options = Options()
-    options.headless = True
-
-    with webdriver.Chrome("./chromedriver.exe", options=options) as browser:
-        browser.get(url)
-        sleep(np.random.uniform(2, 7))
-        html = browser.page_source
-    return html
+        with webdriver.Chrome("./chromedriver.exe", options=options) as browser:
+            browser.get(url)
+            sleep(np.random.uniform(2, 7))
+            html = browser.page_source
+        return html
+        
+    else:
+        ua = UserAgent()
+        return requests.get(url, headers={"User-Agent": ua.random}).content
 
 
 def get_relatives(name: str) -> dict:
@@ -40,8 +41,8 @@ def get_relatives(name: str) -> dict:
 
     dashed_name = "-".join(name.split(" ")).lower()
 
-    html = load_page(URL + dashed_name)
-    soup = BeautifulSoup(html, "html.parser")
+    html = load_page(URL + dashed_name, selenium_method=False)
+    soup = BeautifulSoup(html, "lxml")
 
     df = pd.read_html(soup.prettify())[0]
     df.columns = ["ПІБ", "Місце роботи", "Початок роботи", "Кінець роботи"]
@@ -100,25 +101,34 @@ def table_to_text(relatives: dict) -> iter:
             yield p1
 
 
-def main():
-    with open("relatives_input.txt", encoding="utf-8") as input_file:
+def writer(output_path, name, result):
+    with open(output_path, "a") as output_file:
+        output_file.write(f"\n{name}:\n")
+        if isinstance(result, str):
+            output_file.write("Сталася помилка\n")
+        else:
+            for counter, value in enumerate(result, 1):
+                output_file.write(f"{counter}. {value}\n")
+
+
+def main(input_path, output_path):
+    with open(input_path, encoding="utf-8") as input_file:
         for name in input_file:
+            
             relatives_dict = get_relatives(name)
-    
             try:
                 result = list(table_to_text(relatives_dict))
             except TypeError:
                 result = "Сталася помилка"
+            writer(output_path, name, result)
 
-            with open("./relatives_output.txt", "a") as output_file:
-                output_file.write(f"\n{name}:\n")
-                if isinstance(result, str):
-                    output_file.write("Сталася помилка\n")
-                else:
-                    for counter, value in enumerate(result, 1):
-                        s = f"{counter}. {value}"
-                        output_file.write(f"{s}\n")
+
+@click.command()
+@click.argument('input_path', type=click.Path(exists=True))
+@click.argument('output_path', type=click.Path())
+def cli(input_path, output_path):
+    main(input_path, output_path)
 
 
 if __name__ == "__main__":
-    main()
+    cli()
