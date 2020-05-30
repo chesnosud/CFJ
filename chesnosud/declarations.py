@@ -1,5 +1,6 @@
 import click
 import requests
+import numpy as np
 import pandas as pd
 from time import sleep
 from pathlib import Path
@@ -183,20 +184,30 @@ def save(df: pd.DataFrame, name: str) -> None:
         ПІБ декларанта, яке використовується як назва файлу
     """
 
+    _columns = {
+        "paste": "Скопіювати", 
+        "property_num": "Нерухоме майно",
+        "vehicle_num": "Рухоме майно", 
+        "gift_num": "Кількість подарунків",
+        "gift_sum": "Розмір усіх подарунків"
+    }
+
     df["paste"] = df["declaration_year"].astype(str).str.cat(df["link"], sep="| ")
-    df = df[["paste", "property_num", "vehicle_num", "gift_num", "gift_sum"]]
-    df.columns = ["Скопіювати", "Нерухоме майно", "Рухоме майно", "Кількість подарунків", "Розмір усіх подарунків"]
+    df = df[list(_columns.keys())].rename(columns=_columns)
     df.to_excel(PATH / f"{name}.xlsx", index=False)
+    
 
-
-@click.command()
-@click.argument("input_path", type=click.Path(exists=True))
-def cli(input_path):
-    """ Download declarations for given names. """
-    with open(input_path, encoding="utf-8") as input_file:
-        names_list = input_file.read().splitlines()
-
-    for i, person in reversed(list(enumerate(names_list))):
+def collect_declarations(names: List[str], verbose : bool = False) -> Iterable[str]:
+    """ Збирає декларації, повертає імена в разі помилки. 
+    
+    Parameters
+    ----------
+    names: List[str]
+        Перелік ПІБ, чиї декларації слід зібрати
+    """
+    
+    
+    for i, person in reversed(list(enumerate(names))):
         person = person.strip().partition(".")[0]
         url = f"http://declarations.com.ua/search?q={person}+AND+суддя&deepsearch=on&format=opendata"
 
@@ -212,12 +223,30 @@ def cli(input_path):
                 save(frame, person)
 
         except ValueError:
-            with open(output_path, "a") as ve:
-                ve.write(f"{person}\n")
-
+            yield person
         
-        click.echo(f"{i}, {person}")
+        if verbose and i != 0:
+            click.echo(f"{i} left")
 
+
+@click.command()
+@click.argument("input_path", type=click.Path(exists=True))
+@click.option("--verbose", "-v", is_flag=True, help="Print more output.")
+def cli(input_path, verbose):
+    """ Download declarations for given names. """
+    
+    declarants = pd.read_excel(input_path)
+    names = declarants["names"].to_list()
+    failed = list(collect_declarations(names, verbose))
+    declarants["status"] = np.where(
+        declarants["names"].isin(failed), "Error", "OK"
+    )
+    declarants.to_excel(PATH / "declarations_log.xlsx", index=False)
+    
+    if verbose:
+        click.echo("Done with the following results (%)")
+        click.echo(declarants["status"].value_counts(normalize=True))
+        
 
 if __name__ == "__main__":
     cli()
