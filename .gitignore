@@ -1,8 +1,3 @@
-__pycache__/
-.ipynb_checkpoints/
-.mypy_cache/
-.idea/
-звільнення/
-декларації/
-результати_кваліфоцінювання/
-temp.py
+**/.ipynb_checkpoints/
+**/__pycache__/
+chesnosud_venv/
