@@ -10,20 +10,25 @@ from typing import Any, Dict, Iterable, List
 PATH = Path(__file__).resolve().parent.parent / "data" / "processed" / "declarations"
 
 
-def count_gifts(data: List[Any]) -> Iterable[int]:
-    """ Перевіряє наявність подарунків в декларації та повертає розмір кожної. 
+def count_things(data: List[Any], value_type: str = "gifts") -> Iterable[int]:
+    """ Перевіряє наявність "одиниці" в декларації та повертає розмір кожної. 
     
 
     Parameters
     ----------
     data : list of nested dictionaries (requests' response)
         Є аргументом генератора `step`.   
+    value_type : str
+        Тип об'єкта, який слід перевірити (sizeIncome, model, totalArea)
     """
-    for income_type in data.values():
-        if "Подарунок" in income_type["objectType"]:
-            yield income_type["sizeIncome"]
-
-
+    for item in data.values():
+        if value_type == "gifts":
+            if "Подарунок" in item["objectType"]:
+                yield item["sizeIncome"]
+        else:
+            yield item.get(value_type, 0)
+            
+            
 def step(data: List[Any]) -> Iterable[Dict[str, int]]:
     """ Збирає інформацію, що стосується (не)рухомого майна та подарунків судді.
     
@@ -50,16 +55,28 @@ def step(data: List[Any]) -> Iterable[Dict[str, int]]:
         except KeyError:
             url = item["raw_source"]["declaration"]["url"]
         try:
-            gifts = list(count_gifts(step["step_11"]))
+            gifts = list(count_things(step["step_11"]))
         except KeyError:
             gifts = False
+        
+        try:
+            area = list(count_things(step["step_3"], value_type="totalArea"))
+        except KeyError:
+            area = False
+        
+        try:
+            vehicles = list(count_things(step["step_6"], value_type="model"))
+        except KeyError:
+            vehicles = False
 
         step_3, step_6 = step.get("step_3"), step.get("step_6")
 
         yield {
             "link": url,
-            "property_num": len(step_3) if step_3 else 0,
+            "real_estate": len(step_3) if step_3 else 0,
+            "real_estate_area": sum(area) if area else 0,
             "vehicle_num": len(step_6) if step_6 else 0,
+            "vehicle_models": "; ".join(str(v) for v in vehicles) if vehicles else "",
             "gift_num": len(gifts) if gifts else 0,
             "gift_sum": sum(gifts) if gifts else 0,
         }
@@ -186,8 +203,10 @@ def save(df: pd.DataFrame, name: str) -> None:
 
     _columns = {
         "paste": "Скопіювати", 
-        "property_num": "Нерухоме майно",
+        "real_estate": "Нерухоме майно",
+        "real_estate_area": "Площа нерухомого майна",
         "vehicle_num": "Рухоме майно", 
+        "vehicle_models": "Модель рухомого майна",
         "gift_num": "Кількість подарунків",
         "gift_sum": "Розмір усіх подарунків"
     }
