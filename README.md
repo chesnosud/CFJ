@@ -1,15 +1,9 @@
 <p align="center">
   <a href="" rel="noopener">
- <img width=200px height=200px src="https://scontent.fiev22-1.fna.fbcdn.net/v/t31.0-8/13417008_1756934504552318_310776707786659683_o.png?_nc_cat=100&_nc_sid=09cbfe&_nc_ohc=AnPIwUfczt0AX8ZzNIv&_nc_ht=scontent.fiev22-1.fna&oh=40a63081ffd38fb2f62d6b806a5843ea&oe=5EF7EC70" alt="Project logo"></a>
+ <img width=200px height=200px src="static/logo.png" alt="Project logo"></a>
 </p>
 
 <h3 align="center">Відкриваємо дані: @chesnosud</h3>
-
-<div align="center">
-
-  [![Status](https://img.shields.io/badge/status-active-success.svg)]() 
-
-</div>
 
 ---
 
