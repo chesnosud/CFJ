@@ -1,3 +1,4 @@
+import logging
 import click
 import requests
 import numpy as np
@@ -202,7 +203,7 @@ def save(df: pd.DataFrame, name: str) -> None:
     df.to_excel(PATH / f"{name}.xlsx", index=False)
     
 
-def collect_declarations(names: List[str], verbose : bool = False) -> Iterable[str]:
+def collect_declarations(names: List[str], verbose : bool = False):
     """ Збирає декларації, повертає імена в разі помилки. 
     
     Parameters
@@ -226,7 +227,8 @@ def collect_declarations(names: List[str], verbose : bool = False) -> Iterable[s
                 save(result, person)
 
         except ValueError:
-            yield person
+            logging.info(person)
+            
         
         if verbose and i != 0:
             click.echo(f"{i} left")
@@ -239,16 +241,18 @@ def cli(input_path, verbose):
     """ Download declarations for given names. """
     declarants = pd.read_excel(input_path)
     names = declarants["names"].to_list()
-    failed = list(collect_declarations(names, verbose))
-    declarants["status"] = np.where(
-        declarants["names"].isin(failed), "Error", "OK"
-    )
-    declarants.to_excel(PATH / "declarations_log.xlsx", index=False)
-    
-    if verbose:
-        click.echo("Done with the following results (%)")
-        click.echo(declarants["status"].value_counts(normalize=True))
+    collect_declarations(names, verbose)
         
 
 if __name__ == "__main__":
+
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)s]: %(message)s",
+        handlers=[
+            logging.FileHandler(PATH / "declarations.log"),
+            logging.StreamHandler()
+        ]
+    )
+
     cli()
